@@ -1,0 +1,11 @@
+Txn Date,Txn ID,Party Name,Entry Type,Txn Amount,Payment Mode,Payment Status,Narration
+20-09-2026,TXN-2026-1001,Apex Logistics Pvt Ltd,Debit,48500,Bank,Success,Express freight & octroi charges
+2026-09-20,TXN-2026-1002,Reliance Retail Distribution,Credit,"₹1,25,000",Bank,Success,Customer order collection batch
+20/09/2026,TXN-2026-1003,Mehta Industrial Supplies,Debit,19400,upi,completed,Raw material procurement lot
+20-09-2026,TXN-2026-1004,Kulkarni & Sons Hardware,Credit,32000,UPI,Success,Advance retainer against PO #8841
+20-09-2026,TXN-2026-1004,Kulkarni & Sons Hardware,Credit,32000,UPI,Success,Duplicate webhook retry entry
+20-09-2026,TXN-2026-1005,Bharat Electronics Corp,Debit,84200,NEFT,Pending,Awaiting beneficiary bank confirmation
+20-09-2026,TXN-2026-1008,   ,Credit,21800,UPI,Success,Unidentified counter UPI collection
+21-09-2026,TXN-2026-1011,BlueDart Express Freight,Debit,28900,UPI,Failed,UPI daily limit exceeded error
+32-09-2026,TXN-2026-1013,Godrej Interio Commercial,Debit,39500,Bank,Success,Office ergonomic seating batch
+21-09-2026,TXN-2026-1016,Crompton Greaves Consumer,Debit,-18500,Bank,Pending,Reversed debit entry with negative sign
