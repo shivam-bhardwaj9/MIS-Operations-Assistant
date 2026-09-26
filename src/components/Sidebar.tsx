@@ -5,11 +5,13 @@ import {
   FileSpreadsheet,
   GitCompare,
   LayoutDashboard,
+  RotateCcw,
   Settings,
   Upload,
 } from 'lucide-react';
 import { NavTab } from '../hooks/useMISState';
 import { DatasetSession, ReconciliationResult, SampleDatasetId } from '../types/mis';
+import { formatFileSize, getFileTypeLabel } from '../utils/formatters';
 import { SAMPLE_DATASET_META } from '../utils/sampleDatasets';
 
 interface SidebarProps {
@@ -19,6 +21,7 @@ interface SidebarProps {
   reconciliation: ReconciliationResult | null;
   activeSampleId: SampleDatasetId;
   onLoadSample: (datasetId: SampleDatasetId) => void;
+  onStartNewAnalysis: () => void;
   isLoading: boolean;
 }
 
@@ -43,6 +46,7 @@ export function Sidebar({
   reconciliation,
   activeSampleId,
   onLoadSample,
+  onStartNewAnalysis,
   isLoading,
 }: SidebarProps) {
   return (
@@ -145,11 +149,11 @@ export function Sidebar({
         </div>
 
         {session && (
-          <div className="pt-2 border-t border-slate-200/80 space-y-1.5">
+          <div className="pt-2 border-t border-slate-200/80 space-y-2">
             <div className="flex items-center justify-between text-xs text-slate-500">
               <span>Active File</span>
               <span className="font-mono tabular-nums text-slate-800 font-semibold">
-                {session.validationSummary.totalRecords} rows · {session.uploadedColumns.length} cols
+                {session.validationSummary.totalRecords} rows • {getFileTypeLabel(session.fileName)}
               </span>
             </div>
             <div
@@ -162,10 +166,22 @@ export function Sidebar({
               <span className="text-emerald-700 font-medium">
                 Valid: {session.validationSummary.validRecords}
               </span>
+              <span className="text-slate-500">
+                {formatFileSize(session.fileSize)}
+              </span>
               <span className="text-rose-700 font-medium">
                 Errors: {session.validationSummary.invalidRecords}
               </span>
             </div>
+            <button
+              type="button"
+              disabled={isLoading}
+              onClick={onStartNewAnalysis}
+              className="w-full inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <RotateCcw className="w-3 h-3 text-slate-500" />
+              <span>Clear Analysis</span>
+            </button>
           </div>
         )}
       </div>

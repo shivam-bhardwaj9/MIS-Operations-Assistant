@@ -29,6 +29,7 @@ export default function App() {
     setActiveTab,
     activeSampleId,
     session,
+    fileInputResetKey,
     reconcileState,
     settings,
     updateSettings,
@@ -40,6 +41,8 @@ export default function App() {
     handleLoadSampleData,
     handleUploadFile,
     handleSelectWorksheet,
+    handleDeleteUploadedFile,
+    handleStartNewAnalysis,
     handleApplyCleaning,
     handleInlineCellUpdate,
     handleRemoveDuplicateRows,
@@ -81,6 +84,7 @@ export default function App() {
           reconciliation={reconcileState?.result || null}
           activeSampleId={activeSampleId}
           onLoadSample={(datasetId) => handleLoadSampleData(datasetId, true)}
+          onStartNewAnalysis={handleStartNewAnalysis}
           isLoading={isLoading}
         />
       </div>
@@ -92,6 +96,7 @@ export default function App() {
           preparedBy={settings.preparedBy}
           activeSampleId={activeSampleId}
           onLoadSample={(datasetId) => handleLoadSampleData(datasetId, true)}
+          onStartNewAnalysis={handleStartNewAnalysis}
           onExportReport={() => handleGenerateExcelReport()}
           isLoading={isLoading}
           isExporting={isExporting}
@@ -164,7 +169,11 @@ export default function App() {
               session={session}
               settings={settings}
               activeSampleId={activeSampleId}
+              fileInputResetKey={fileInputResetKey}
               isLoading={isLoading}
+              onUploadFile={handleUploadFile}
+              onDeleteFile={handleDeleteUploadedFile}
+              onStartNewAnalysis={handleStartNewAnalysis}
               onLoadSample={(datasetId) => handleLoadSampleData(datasetId, true)}
               onNavigate={setActiveTab}
             />
@@ -175,9 +184,12 @@ export default function App() {
               session={session}
               settings={settings}
               activeSampleId={activeSampleId}
+              fileInputResetKey={fileInputResetKey}
               isLoading={isLoading}
               onUploadFile={handleUploadFile}
               onSelectSheet={handleSelectWorksheet}
+              onDeleteFile={handleDeleteUploadedFile}
+              onStartNewAnalysis={handleStartNewAnalysis}
               onLoadSample={(datasetId) => handleLoadSampleData(datasetId, true)}
               onApplyCleaning={handleApplyCleaning}
               onNavigate={setActiveTab}

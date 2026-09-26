@@ -4,7 +4,6 @@ import {
   CheckCircle2,
   Compass,
   Database,
-  FileSpreadsheet,
   Upload,
 } from 'lucide-react';
 import {
@@ -22,6 +21,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { UploadedFileCard } from '../components/UploadedFileCard';
 import { NavTab } from '../hooks/useMISState';
 import { AppSettings, DatasetSession, SampleDatasetId } from '../types/mis';
 import { formatCurrency, formatNumber } from '../utils/formatters';
@@ -31,7 +31,11 @@ interface DashboardPageProps {
   session: DatasetSession | null;
   settings: AppSettings;
   activeSampleId: SampleDatasetId;
+  fileInputResetKey: number;
   isLoading: boolean;
+  onUploadFile: (file: File) => void;
+  onDeleteFile: () => void;
+  onStartNewAnalysis: () => void;
   onLoadSample: (datasetId: SampleDatasetId) => void;
   onNavigate: (tab: NavTab) => void;
 }
@@ -50,7 +54,11 @@ export function DashboardPage({
   session,
   settings,
   activeSampleId,
+  fileInputResetKey,
   isLoading,
+  onUploadFile,
+  onDeleteFile,
+  onStartNewAnalysis,
   onLoadSample,
   onNavigate,
 }: DashboardPageProps) {
@@ -127,19 +135,22 @@ export function DashboardPage({
 
   return (
     <div className="space-y-6">
+      {/* Uploaded File Card (Allows Replace File, Delete File with confirmation, or Start New Analysis directly from Dashboard) */}
+      <UploadedFileCard
+        session={session}
+        isLoading={isLoading}
+        fileInputResetKey={fileInputResetKey}
+        onReplaceFile={onUploadFile}
+        onDeleteFile={onDeleteFile}
+        onStartNewAnalysis={onStartNewAnalysis}
+      />
+
       {/* Multi-Domain Dataset Bar & Active File Header */}
       <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div className="space-y-1">
-            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-              <FileSpreadsheet className="w-3.5 h-3.5 text-slate-400" />
-              <span className="font-semibold text-slate-800">{session.fileName}</span>
-              <span aria-hidden="true">·</span>
-              <span>Sheet: {session.activeSheetName}</span>
-              <span aria-hidden="true">·</span>
-              <span className="font-mono tabular-nums">
-                {validationSummary.totalRecords} rows × {session.uploadedColumns.length} columns
-              </span>
+            <div className="text-xs font-semibold text-slate-500">
+              Active MIS Analysis Workspace
             </div>
             <h2 className="text-xl font-bold text-slate-900 tracking-tight">
               Executive MIS Operations Overview
@@ -174,8 +185,7 @@ export function DashboardPage({
           </span>
           <div className="flex flex-wrap items-center gap-1.5">
             {SAMPLE_DATASET_META.map((ds) => {
-              const isCurrent =
-                session.fileName === ds.fileName || activeSampleId === ds.id;
+              const isCurrent = session.fileName === ds.fileName;
               return (
                 <button
                   key={ds.id}

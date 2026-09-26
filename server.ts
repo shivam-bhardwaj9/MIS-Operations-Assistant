@@ -1,5 +1,7 @@
 import express from 'express';
+import fs from 'fs';
 import multer from 'multer';
+import os from 'os';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import {
@@ -28,15 +30,29 @@ const upload = multer({
 });
 
 const sessions = new Map<string, DatasetSession>();
-const workbookBuffers = new Map<string, { buffer: Buffer; fileName: string; fileSize: number }>();
 const reconciliations = new Map<string, ReconciliationResult>();
 
-function validateFileExtension(filename: string): void {
+function validateFileExtension(filename: string): string {
   const ext = path.extname(filename).toLowerCase();
   if (!['.xlsx', '.xls', '.csv'].includes(ext)) {
     throw new Error(
       `Unsupported file format "${ext}". Please upload an Excel (.xlsx, .xls) or CSV (.csv) file.`
     );
+  }
+  return ext;
+}
+
+function safeRemoveTempFile(tempFilePath: string | null): void {
+  if (!tempFilePath) return;
+  try {
+    const resolved = path.resolve(tempFilePath);
+    // Never delete repository sample_data files
+    if (resolved.includes('sample_data')) return;
+    if (fs.existsSync(resolved)) {
+      fs.unlinkSync(resolved);
+    }
+  } catch {
+    // Ignore cleanup errors if already removed
   }
 }
 
@@ -58,7 +74,12 @@ async function startServer() {
     try {
       const sessionId = (req.body?.sessionId as string) || `session-${Date.now()}`;
       const datasetId = (req.body?.datasetId as SampleDatasetId) || 'transactions';
-      const applyCleaning = req.body?.applyCleaning !== undefined ? Boolean(req.body.applyCleaning) : true;
+      const applyCleaning =
+        req.body?.applyCleaning !== undefined ? Boolean(req.body.applyCleaning) : true;
+
+      // Clear any previous analysis / reconciliation for this session before loading new dataset
+      sessions.delete(sessionId);
+      reconciliations.delete(sessionId);
 
       const { fileName, rawRecords } = getSampleDatasetById(datasetId);
       const sessionData = processUniversalDataset(rawRecords, {
@@ -78,24 +99,34 @@ async function startServer() {
     }
   });
 
-  // Universal Excel/CSV Upload with Smart Sheet & Header Detection
+  // Universal Excel/CSV Upload with Smart Sheet & Header Detection & Temporary File Cleanup
   app.post('/api/upload', upload.single('file'), (req, res) => {
+    let tempUploadPath: string | null = null;
     try {
       if (!req.file) {
         res.status(400).json({ error: 'No file provided in upload request.' });
         return;
       }
 
-      validateFileExtension(req.file.originalname);
+      const ext = validateFileExtension(req.file.originalname);
       const sessionId = (req.body?.sessionId as string) || `session-${Date.now()}`;
       const preferredSheet = req.body?.sheetName as string | undefined;
 
-      const parsed = parseWorkbookFromData(req.file.buffer, preferredSheet);
-      workbookBuffers.set(sessionId, {
-        buffer: req.file.buffer,
-        fileName: req.file.originalname,
-        fileSize: req.file.size,
-      });
+      // Write uploaded source file to a temporary path, process it, and guarantee deletion in finally
+      tempUploadPath = path.join(
+        os.tmpdir(),
+        `mis_upload_${Date.now()}_${Math.random().toString(36).slice(2)}${ext}`
+      );
+      fs.writeFileSync(tempUploadPath, req.file.buffer);
+      const fileBufferFromDisk = fs.readFileSync(tempUploadPath);
+
+      const parsed = parseWorkbookFromData(fileBufferFromDisk, preferredSheet);
+
+      // Clear previous session & reconciliation state when replacing file
+      sessions.delete(sessionId);
+      if (!preferredSheet) {
+        reconciliations.delete(sessionId);
+      }
 
       const sessionData = processUniversalDataset(parsed.rawRecords, {
         applyCleaning: true,
@@ -111,35 +142,32 @@ async function startServer() {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to parse uploaded file.';
       res.status(400).json({ error: message });
+    } finally {
+      safeRemoveTempFile(tempUploadPath);
     }
   });
 
-  // Switch active worksheet in a multi-sheet workbook
-  app.post('/api/select-sheet', (req, res) => {
-    try {
-      const { sessionId, sheetName } = req.body as { sessionId: string; sheetName: string };
-      const savedWb = workbookBuffers.get(sessionId);
-      if (!savedWb) {
-        res.status(400).json({ error: 'Workbook buffer not found in session. Please re-upload file.' });
-        return;
-      }
+  // Delete / Clear Session & Uploaded File Analysis State
+  app.delete('/api/session/:sessionId', (req, res) => {
+    const { sessionId } = req.params;
+    sessions.delete(sessionId);
+    reconciliations.delete(sessionId);
+    res.json({
+      status: 'cleared',
+      sessionId,
+      message: 'Uploaded file deleted and analysis state cleared.',
+    });
+  });
 
-      const parsed = parseWorkbookFromData(savedWb.buffer, sheetName);
-      const sessionData = processUniversalDataset(parsed.rawRecords, {
-        applyCleaning: true,
-        fileName: savedWb.fileName,
-        fileSize: savedWb.fileSize,
-        sessionId,
-        sheetNames: parsed.sheetNames,
-        activeSheetName: parsed.activeSheetName,
-      });
-
-      sessions.set(sessionId, sessionData);
-      res.json(sessionData);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to switch sheet.';
-      res.status(400).json({ error: message });
-    }
+  app.post('/api/session/clear', (req, res) => {
+    const sessionId = (req.body?.sessionId as string) || 'default';
+    sessions.delete(sessionId);
+    reconciliations.delete(sessionId);
+    res.json({
+      status: 'cleared',
+      sessionId,
+      message: 'Uploaded file deleted and analysis state cleared.',
+    });
   });
 
   // Re-validate / Clean Dataset
@@ -276,8 +304,9 @@ async function startServer() {
     }
   });
 
-  // Multi-Sheet Excel Report Generator
+  // Multi-Sheet Excel Report Generator with Temporary Report File Cleanup
   app.post('/api/report', async (req, res) => {
+    let tempReportPath: string | null = null;
     try {
       const {
         sessionId,
@@ -309,6 +338,13 @@ async function startServer() {
         settings || DEFAULT_SETTINGS
       );
 
+      tempReportPath = path.join(
+        os.tmpdir(),
+        `mis_report_${Date.now()}_${Math.random().toString(36).slice(2)}.xlsx`
+      );
+      fs.writeFileSync(tempReportPath, Buffer.from(buffer));
+      const reportBytes = fs.readFileSync(tempReportPath);
+
       res.setHeader(
         'Content-Type',
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -317,10 +353,12 @@ async function startServer() {
         'Content-Disposition',
         'attachment; filename="MIS_Operations_Report.xlsx"'
       );
-      res.send(Buffer.from(buffer));
+      res.send(reportBytes);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to generate Excel report.';
       res.status(500).json({ error: message });
+    } finally {
+      safeRemoveTempFile(tempReportPath);
     }
   });
 

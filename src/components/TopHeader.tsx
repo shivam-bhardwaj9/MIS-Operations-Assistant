@@ -1,4 +1,4 @@
-import { Calendar, Database, Download, User } from 'lucide-react';
+import { Calendar, Database, Download, RotateCcw, User } from 'lucide-react';
 import { DatasetSession, SampleDatasetId } from '../types/mis';
 import { SAMPLE_DATASET_META } from '../utils/sampleDatasets';
 
@@ -7,6 +7,7 @@ interface TopHeaderProps {
   preparedBy: string;
   activeSampleId: SampleDatasetId;
   onLoadSample: (datasetId: SampleDatasetId) => void;
+  onStartNewAnalysis: () => void;
   onExportReport: () => void;
   isLoading: boolean;
   isExporting: boolean;
@@ -17,6 +18,7 @@ export function TopHeader({
   preparedBy,
   activeSampleId,
   onLoadSample,
+  onStartNewAnalysis,
   onExportReport,
   isLoading,
   isExporting,
@@ -35,7 +37,7 @@ export function TopHeader({
       </h1>
 
       {/* Zone 2: Current Date & User Profile Context */}
-      <div className="hidden lg:flex items-center gap-5 text-xs text-slate-600">
+      <div className="hidden xl:flex items-center gap-5 text-xs text-slate-600">
         <div className="flex items-center gap-1.5">
           <Calendar className="w-3.5 h-3.5 text-slate-400" />
           <span className="font-mono tabular-nums">{formattedDate}</span>
@@ -49,7 +51,7 @@ export function TopHeader({
         </div>
       </div>
 
-      {/* Zone 3: 1-2 Primary Operational Actions */}
+      {/* Zone 3: Operational Actions */}
       <div className="flex items-center gap-2.5">
         <div className="flex items-center gap-1.5">
           <Database className="w-3.5 h-3.5 text-slate-500 hidden sm:block" />
@@ -67,6 +69,18 @@ export function TopHeader({
             ))}
           </select>
         </div>
+
+        {session && (
+          <button
+            type="button"
+            disabled={isLoading}
+            onClick={onStartNewAnalysis}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-slate-300 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors whitespace-nowrap disabled:opacity-40"
+          >
+            <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
+            <span>Start New Analysis</span>
+          </button>
+        )}
 
         <button
           type="button"

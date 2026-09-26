@@ -5,9 +5,11 @@ import {
   Download,
   FileSpreadsheet,
   Layers,
+  RotateCcw,
   Sparkles,
   Upload,
 } from 'lucide-react';
+import { UploadedFileCard } from '../components/UploadedFileCard';
 import { NavTab } from '../hooks/useMISState';
 import { downloadSampleDatasetExcel } from '../services/misApi';
 import { AppSettings, DatasetSession, SampleDatasetId } from '../types/mis';
@@ -18,9 +20,12 @@ interface UploadDataPageProps {
   session: DatasetSession | null;
   settings: AppSettings;
   activeSampleId: SampleDatasetId;
+  fileInputResetKey: number;
   isLoading: boolean;
   onUploadFile: (file: File) => void;
   onSelectSheet: (sheetName: string) => void;
+  onDeleteFile: () => void;
+  onStartNewAnalysis: () => void;
   onLoadSample: (datasetId: SampleDatasetId) => void;
   onApplyCleaning: (apply?: boolean) => void;
   onNavigate: (tab: NavTab) => void;
@@ -30,9 +35,12 @@ export function UploadDataPage({
   session,
   settings,
   activeSampleId,
+  fileInputResetKey,
   isLoading,
   onUploadFile,
   onSelectSheet,
+  onDeleteFile,
+  onStartNewAnalysis,
   onLoadSample,
   onApplyCleaning,
   onNavigate,
@@ -72,6 +80,17 @@ export function UploadDataPage({
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
+          {session && (
+            <button
+              type="button"
+              onClick={onStartNewAnalysis}
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-slate-300 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors whitespace-nowrap"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
+              <span>Clear Analysis</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => downloadSampleDatasetExcel(activeSampleId)}
@@ -82,6 +101,18 @@ export function UploadDataPage({
           </button>
         </div>
       </div>
+
+      {/* Uploaded File Card (Shown when a file/dataset is active) */}
+      {session && (
+        <UploadedFileCard
+          session={session}
+          isLoading={isLoading}
+          fileInputResetKey={fileInputResetKey}
+          onReplaceFile={onUploadFile}
+          onDeleteFile={onDeleteFile}
+          onStartNewAnalysis={onStartNewAnalysis}
+        />
+      )}
 
       {/* 5 Pre-Configured Business Datasets Selector */}
       <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-3">
@@ -147,6 +178,7 @@ export function UploadDataPage({
         }`}
       >
         <input
+          key={`main-upload-input-${fileInputResetKey}`}
           ref={fileInputRef}
           type="file"
           accept=".xlsx,.xls,.csv"
@@ -159,7 +191,9 @@ export function UploadDataPage({
         </div>
 
         <div className="text-sm font-bold text-slate-900">
-          Drag and drop any Excel (.xlsx, .xls) or CSV (.csv) dataset here
+          {session
+            ? 'Upload or drop another Excel (.xlsx, .xls) or CSV (.csv) file to replace current analysis'
+            : 'Drag and drop any Excel (.xlsx, .xls) or CSV (.csv) dataset here'}
         </div>
         <p className="mt-1 text-xs text-slate-500 max-w-lg mx-auto">
           Automatically detects the true header row even if title banners exist at the top, selects
@@ -173,7 +207,11 @@ export function UploadDataPage({
             onClick={() => fileInputRef.current?.click()}
             className="px-5 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition-colors"
           >
-            {isLoading ? 'Parsing & Profiling...' : 'Browse Local Files'}
+            {isLoading
+              ? 'Parsing & Profiling...'
+              : session
+              ? 'Select Replacement File'
+              : 'Browse Local Files'}
           </button>
         </div>
       </div>
@@ -219,7 +257,7 @@ export function UploadDataPage({
                 </h3>
               </div>
 
-              <div className="flex items-center gap-2.5">
+              <div className="flex flex-wrap items-center gap-2.5">
                 <button
                   type="button"
                   onClick={() => onApplyCleaning(!session.isCleaned)}
@@ -231,6 +269,15 @@ export function UploadDataPage({
                       ? 'Showing Clean Data (Switch to Raw)'
                       : 'Apply Universal Cleaning'}
                   </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => onNavigate('dashboard')}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-slate-300 bg-white text-xs font-semibold text-slate-800 hover:bg-slate-50 transition-colors"
+                >
+                  <span>View MIS Dashboard</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </button>
 
                 <button
@@ -350,7 +397,13 @@ export function UploadDataPage({
                         {col.uniqueCount}
                       </td>
                       <td className="py-3 px-4 text-right font-mono tabular-nums">
-                        <span className={col.nullCount > 0 ? 'text-amber-700 font-semibold' : 'text-slate-500'}>
+                        <span
+                          className={
+                            col.nullCount > 0
+                              ? 'text-amber-700 font-semibold'
+                              : 'text-slate-500'
+                          }
+                        >
                           {col.nullCount} ({col.missingPercentage}%)
                         </span>
                       </td>

@@ -83,6 +83,16 @@ export async function uploadDatasetApi(
   });
 }
 
+export async function deleteSessionApi(sessionId: string): Promise<void> {
+  try {
+    await fetch(`/api/session/${encodeURIComponent(sessionId)}`, {
+      method: 'DELETE',
+    });
+  } catch {
+    // Fallback if offline or client-only mode
+  }
+}
+
 export async function loadSampleDatasetApi(
   sessionId: string,
   datasetId: SampleDatasetId = 'transactions',

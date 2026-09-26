@@ -78,6 +78,25 @@ export function ReconciliationPage({
       setFileACols(reconcileState.fileAColumns);
       setFileBCols(reconcileState.fileBColumns);
       setConfig(reconcileState.config);
+    } else {
+      setFileARecords([]);
+      setFileBRecords([]);
+      setFileAName('');
+      setFileBName('');
+      setFileACols([]);
+      setFileBCols([]);
+      setConfig({
+        keyColumnA: '',
+        keyColumnB: '',
+        valueColumnA: '',
+        valueColumnB: '',
+        dateColumnA: '',
+        dateColumnB: '',
+        labelColumnA: '',
+        labelColumnB: '',
+      });
+      setCategoryFilter('ALL');
+      setSearchQuery('');
     }
   }, [reconcileState]);
 

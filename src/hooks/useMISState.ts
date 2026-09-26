@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   cleanDatasetApi,
+  deleteSessionApi,
   downloadFormattedExcelReport,
   loadSampleDatasetApi,
   loadSampleReconciliationApi,
@@ -41,6 +42,7 @@ export function useMISState() {
   const [activeSampleId, setActiveSampleId] = useState<SampleDatasetId>('transactions');
   const [session, setSession] = useState<DatasetSession | null>(null);
   const [lastUploadedFile, setLastUploadedFile] = useState<File | null>(null);
+  const [fileInputResetKey, setFileInputResetKey] = useState<number>(0);
   const [reconcileState, setReconcileState] =
     useState<UniversalReconcileApiResponse | null>(null);
 
@@ -95,6 +97,8 @@ export function useMISState() {
       setIsLoading(true);
       setActiveSampleId(datasetId);
       setLastUploadedFile(null);
+      setReconcileState(null);
+      setFileInputResetKey((k) => k + 1);
       try {
         const data = await loadSampleDatasetApi(sessionId, datasetId, autoClean);
         setSession(data);
@@ -116,6 +120,12 @@ export function useMISState() {
   const handleUploadFile = useCallback(
     async (file: File, preferredSheetName?: string) => {
       setIsLoading(true);
+      // When uploading or replacing a file (not switching worksheet), clear old analysis first
+      if (!preferredSheetName) {
+        setSession(null);
+        setReconcileState(null);
+        setFileInputResetKey((k) => k + 1);
+      }
       setLastUploadedFile(file);
       try {
         const data = await uploadDatasetApi(file, sessionId, preferredSheetName);
@@ -142,6 +152,54 @@ export function useMISState() {
     },
     [lastUploadedFile, handleUploadFile]
   );
+
+  const handleDeleteUploadedFile = useCallback(async () => {
+    await deleteSessionApi(sessionId);
+    setSession(null);
+    setReconcileState(null);
+    setLastUploadedFile(null);
+    setIsLoading(false);
+    setIsExporting(false);
+    setFileInputResetKey((k) => k + 1);
+    setActiveTab('upload');
+    notify(
+      'success',
+      'Uploaded File Deleted',
+      'Uploaded file deleted successfully.'
+    );
+  }, [sessionId, notify]);
+
+  const handleStartNewAnalysis = useCallback(async () => {
+    await deleteSessionApi(sessionId);
+    setSession(null);
+    setReconcileState(null);
+    setLastUploadedFile(null);
+    setIsLoading(false);
+    setIsExporting(false);
+    setFileInputResetKey((k) => k + 1);
+    setActiveTab('upload');
+    notify(
+      'info',
+      'Ready for New Analysis',
+      'Current analysis cleared. Upload another Excel or CSV file to begin.'
+    );
+  }, [sessionId, notify]);
+
+  const handleClearSession = useCallback(async () => {
+    await deleteSessionApi(sessionId);
+    setSession(null);
+    setReconcileState(null);
+    setLastUploadedFile(null);
+    setIsLoading(false);
+    setIsExporting(false);
+    setFileInputResetKey((k) => k + 1);
+    setActiveTab('upload');
+    notify(
+      'info',
+      'Session Cleared',
+      'All in-memory records and reconciliation data have been reset.'
+    );
+  }, [sessionId, notify]);
 
   const handleApplyCleaning = useCallback(
     async (apply = true) => {
@@ -326,19 +384,14 @@ export function useMISState() {
     [session, reconcileState, settings, notify]
   );
 
-  const handleClearSession = useCallback(() => {
-    setSession(null);
-    setReconcileState(null);
-    setLastUploadedFile(null);
-    notify('info', 'Session Cleared', 'All in-memory records and reconciliation data have been reset.');
-  }, [notify]);
-
   return {
     sessionId,
     activeTab,
     setActiveTab,
     activeSampleId,
     session,
+    lastUploadedFile,
+    fileInputResetKey,
     reconcileState,
     settings,
     updateSettings,
@@ -350,6 +403,8 @@ export function useMISState() {
     handleLoadSampleData,
     handleUploadFile,
     handleSelectWorksheet,
+    handleDeleteUploadedFile,
+    handleStartNewAnalysis,
     handleApplyCleaning,
     handleInlineCellUpdate,
     handleRemoveDuplicateRows,
