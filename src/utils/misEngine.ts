@@ -17,16 +17,11 @@ import {
   ReconciliationItem,
   ReconciliationResult,
   RowIssue,
-  SampleDatasetId,
   SemanticRole,
   StatusDistributionPoint,
   UniversalProcessedRow,
   ValidationSummary,
 } from '../types/mis';
-import {
-  generateUniversalSampleReconciliation,
-  getSampleDatasetById,
-} from './sampleDatasets';
 
 const MONTH_MAP: Record<string, number> = {
   jan: 1, january: 1,
@@ -1948,5 +1943,3 @@ export function runUniversalReconciliation(
   };
 }
 
-export { getSampleDatasetById, generateUniversalSampleReconciliation };
-export type { SampleDatasetId };

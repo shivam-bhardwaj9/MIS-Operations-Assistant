@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   CheckCircle2,
-  Database,
   FileSpreadsheet,
   GitCompare,
   Search,
@@ -23,7 +22,6 @@ interface ReconciliationPageProps {
   reconcileState: UniversalReconcileApiResponse | null;
   settings: AppSettings;
   isLoading: boolean;
-  onLoadSampleReconcile: () => void;
   onRunCustomReconcile: (params: {
     fileARecords: RawRecord[];
     fileBRecords: RawRecord[];
@@ -39,7 +37,6 @@ export function ReconciliationPage({
   reconcileState,
   settings,
   isLoading,
-  onLoadSampleReconcile,
   onRunCustomReconcile,
   onNotify,
 }: ReconciliationPageProps) {
@@ -210,20 +207,10 @@ export function ReconciliationPage({
             Universal Two-Dataset Reconciliation (File A vs File B)
           </h2>
           <p className="text-sm text-slate-600">
-            Select any matching identifier key (Order ID, Transaction ID, SKU, Employee ID) and
-            compare numeric values, dates, or quantities across two workbooks.
+            Upload two Excel/CSV datasets, select any matching identifier key (Order ID,
+            Transaction ID, SKU, Employee ID), and compare numeric values, dates, or quantities.
           </p>
         </div>
-
-        <button
-          type="button"
-          disabled={isLoading}
-          onClick={onLoadSampleReconcile}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition-colors whitespace-nowrap"
-        >
-          <Database className="w-4 h-4" />
-          <span>{isLoading ? 'Reconciling...' : 'Load Sample Reconciliation Pair'}</span>
-        </button>
       </div>
 
       {/* File A & File B Upload & Column Selectors */}
@@ -436,11 +423,12 @@ export function ReconciliationPage({
         <div className="bg-white border border-slate-200 rounded-xl p-4 flex items-center justify-end">
           <button
             type="button"
+            disabled={isLoading}
             onClick={triggerReconcile}
-            className="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-emerald-700 text-white text-xs font-semibold hover:bg-emerald-800 transition-colors"
+            className="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-emerald-700 text-white text-xs font-semibold hover:bg-emerald-800 transition-colors disabled:opacity-50"
           >
             <GitCompare className="w-4 h-4" />
-            <span>Run Reconciliation</span>
+            <span>{isLoading ? 'Reconciling...' : 'Run Reconciliation'}</span>
           </button>
         </div>
       )}

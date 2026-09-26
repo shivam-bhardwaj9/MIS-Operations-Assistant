@@ -10,17 +10,14 @@ import {
   Upload,
 } from 'lucide-react';
 import { NavTab } from '../hooks/useMISState';
-import { DatasetSession, ReconciliationResult, SampleDatasetId } from '../types/mis';
+import { DatasetSession, ReconciliationResult } from '../types/mis';
 import { formatFileSize, getFileTypeLabel } from '../utils/formatters';
-import { SAMPLE_DATASET_META } from '../utils/sampleDatasets';
 
 interface SidebarProps {
   activeTab: NavTab;
   onSelectTab: (tab: NavTab) => void;
   session: DatasetSession | null;
   reconciliation: ReconciliationResult | null;
-  activeSampleId: SampleDatasetId;
-  onLoadSample: (datasetId: SampleDatasetId) => void;
   onStartNewAnalysis: () => void;
   isLoading: boolean;
 }
@@ -44,8 +41,6 @@ export function Sidebar({
   onSelectTab,
   session,
   reconciliation,
-  activeSampleId,
-  onLoadSample,
   onStartNewAnalysis,
   isLoading,
 }: SidebarProps) {
@@ -128,28 +123,10 @@ export function Sidebar({
         })}
       </nav>
 
-      {/* Multi-Domain Sample Switcher & Active Dataset Status */}
-      <div className="p-4 border-t border-slate-200 bg-slate-50/70 space-y-3">
-        <div>
-          <label className="block text-xs font-semibold text-slate-600 mb-1">
-            Switch Sample Domain Dataset
-          </label>
-          <select
-            value={activeSampleId}
-            disabled={isLoading}
-            onChange={(e) => onLoadSample(e.target.value as SampleDatasetId)}
-            className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
-          >
-            {SAMPLE_DATASET_META.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {session && (
-          <div className="pt-2 border-t border-slate-200/80 space-y-2">
+      {/* Active Dataset Status */}
+      <div className="p-4 border-t border-slate-200 bg-slate-50/70 space-y-2">
+        {session ? (
+          <>
             <div className="flex items-center justify-between text-xs text-slate-500">
               <span>Active File</span>
               <span className="font-mono tabular-nums text-slate-800 font-semibold">
@@ -181,6 +158,20 @@ export function Sidebar({
             >
               <RotateCcw className="w-3 h-3 text-slate-500" />
               <span>Clear Analysis</span>
+            </button>
+          </>
+        ) : (
+          <div className="space-y-2">
+            <div className="text-xs font-medium text-slate-500">
+              No active file uploaded
+            </div>
+            <button
+              type="button"
+              onClick={() => onSelectTab('upload')}
+              className="w-full inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition-colors"
+            >
+              <Upload className="w-3.5 h-3.5" />
+              <span>Upload Excel / CSV</span>
             </button>
           </div>
         )}

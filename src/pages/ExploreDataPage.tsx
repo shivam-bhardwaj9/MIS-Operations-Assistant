@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { BarChart3, Compass, PieChart as PieChartIcon } from 'lucide-react';
+import {
+  BarChart3,
+  Compass,
+  PieChart as PieChartIcon,
+  Upload,
+} from 'lucide-react';
 import {
   Bar,
   BarChart,
@@ -13,11 +18,11 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { NavTab } from '../hooks/useMISState';
 import {
   AggregationType,
   AppSettings,
   DatasetSession,
-  SampleDatasetId,
 } from '../types/mis';
 import { formatCurrency, formatNumber } from '../utils/formatters';
 import { runDynamicGroupByAnalysis } from '../utils/misEngine';
@@ -25,7 +30,7 @@ import { runDynamicGroupByAnalysis } from '../utils/misEngine';
 interface ExploreDataPageProps {
   session: DatasetSession | null;
   settings: AppSettings;
-  onLoadSample: (datasetId: SampleDatasetId) => void;
+  onNavigate: (tab: NavTab) => void;
 }
 
 const COLORS = [
@@ -41,7 +46,7 @@ const COLORS = [
 export function ExploreDataPage({
   session,
   settings,
-  onLoadSample,
+  onNavigate,
 }: ExploreDataPageProps) {
   const groupableColumns = useMemo(() => {
     if (!session) return [];
@@ -98,17 +103,18 @@ export function ExploreDataPage({
     return (
       <div className="bg-white border border-slate-200 rounded-xl p-10 text-center max-w-xl mx-auto my-8 space-y-4">
         <div className="text-base font-bold text-slate-900">
-          No Dataset Loaded for Dynamic Exploration
+          No Dataset Uploaded for Dynamic Exploration
         </div>
         <p className="text-xs text-slate-600">
-          Load a sample dataset or upload an Excel/CSV file to build dynamic Group-By aggregations.
+          Upload an Excel (.xlsx, .xls) or CSV (.csv) file to build dynamic Group-By aggregations.
         </p>
         <button
           type="button"
-          onClick={() => onLoadSample('transactions')}
-          className="px-4 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition-colors"
+          onClick={() => onNavigate('upload')}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition-colors"
         >
-          Load Sample Dataset
+          <Upload className="w-3.5 h-3.5" />
+          <span>Upload Excel / CSV</span>
         </button>
       </div>
     );

@@ -1,12 +1,9 @@
-import { Calendar, Database, Download, RotateCcw, User } from 'lucide-react';
-import { DatasetSession, SampleDatasetId } from '../types/mis';
-import { SAMPLE_DATASET_META } from '../utils/sampleDatasets';
+import { Calendar, Download, RotateCcw, User } from 'lucide-react';
+import { DatasetSession } from '../types/mis';
 
 interface TopHeaderProps {
   session: DatasetSession | null;
   preparedBy: string;
-  activeSampleId: SampleDatasetId;
-  onLoadSample: (datasetId: SampleDatasetId) => void;
   onStartNewAnalysis: () => void;
   onExportReport: () => void;
   isLoading: boolean;
@@ -16,8 +13,6 @@ interface TopHeaderProps {
 export function TopHeader({
   session,
   preparedBy,
-  activeSampleId,
-  onLoadSample,
   onStartNewAnalysis,
   onExportReport,
   isLoading,
@@ -53,23 +48,6 @@ export function TopHeader({
 
       {/* Zone 3: Operational Actions */}
       <div className="flex items-center gap-2.5">
-        <div className="flex items-center gap-1.5">
-          <Database className="w-3.5 h-3.5 text-slate-500 hidden sm:block" />
-          <select
-            aria-label="Select Sample Dataset"
-            value={activeSampleId}
-            disabled={isLoading}
-            onChange={(e) => onLoadSample(e.target.value as SampleDatasetId)}
-            className="px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-900"
-          >
-            {SAMPLE_DATASET_META.map((d) => (
-              <option key={d.id} value={d.id}>
-                Sample: {d.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
         {session && (
           <button
             type="button"

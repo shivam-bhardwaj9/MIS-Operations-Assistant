@@ -1,8 +1,6 @@
 import React, { useRef, useState } from 'react';
 import {
   ArrowRight,
-  Database,
-  Download,
   FileSpreadsheet,
   Layers,
   RotateCcw,
@@ -11,22 +9,18 @@ import {
 } from 'lucide-react';
 import { UploadedFileCard } from '../components/UploadedFileCard';
 import { NavTab } from '../hooks/useMISState';
-import { downloadSampleDatasetExcel } from '../services/misApi';
-import { AppSettings, DatasetSession, SampleDatasetId } from '../types/mis';
+import { AppSettings, DatasetSession } from '../types/mis';
 import { formatCurrency, formatNumber } from '../utils/formatters';
-import { SAMPLE_DATASET_META } from '../utils/sampleDatasets';
 
 interface UploadDataPageProps {
   session: DatasetSession | null;
   settings: AppSettings;
-  activeSampleId: SampleDatasetId;
   fileInputResetKey: number;
   isLoading: boolean;
   onUploadFile: (file: File) => void;
   onSelectSheet: (sheetName: string) => void;
   onDeleteFile: () => void;
   onStartNewAnalysis: () => void;
-  onLoadSample: (datasetId: SampleDatasetId) => void;
   onApplyCleaning: (apply?: boolean) => void;
   onNavigate: (tab: NavTab) => void;
 }
@@ -34,14 +28,12 @@ interface UploadDataPageProps {
 export function UploadDataPage({
   session,
   settings,
-  activeSampleId,
   fileInputResetKey,
   isLoading,
   onUploadFile,
   onSelectSheet,
   onDeleteFile,
   onStartNewAnalysis,
-  onLoadSample,
   onApplyCleaning,
   onNavigate,
 }: UploadDataPageProps) {
@@ -67,20 +59,21 @@ export function UploadDataPage({
 
   return (
     <div className="space-y-6">
-      {/* Header & Sample Domain Loader */}
+      {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-slate-900 tracking-tight">
-            Universal Excel/CSV Upload & Automatic Dataset Profiler
+            Upload Excel / CSV & Automatic Dataset Profiler
           </h2>
           <p className="text-sm text-slate-600">
-            Upload any business spreadsheet (5 to 50+ columns). The engine automatically detects
-            header rows, column types, semantic roles, missing values, and statistical profiles.
+            Upload your business spreadsheet (.xlsx, .xls, or .csv). The engine automatically
+            detects header rows, column types, semantic roles, missing values, and statistical
+            profiles.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
-          {session && (
+        {session && (
+          <div className="flex flex-wrap items-center gap-2.5">
             <button
               type="button"
               onClick={onStartNewAnalysis}
@@ -89,20 +82,11 @@ export function UploadDataPage({
               <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
               <span>Clear Analysis</span>
             </button>
-          )}
-
-          <button
-            type="button"
-            onClick={() => downloadSampleDatasetExcel(activeSampleId)}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-slate-300 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors whitespace-nowrap"
-          >
-            <Download className="w-3.5 h-3.5 text-slate-500" />
-            <span>Download Sample .xlsx ({activeSampleId})</span>
-          </button>
-        </div>
+          </div>
+        )}
       </div>
 
-      {/* Uploaded File Card (Shown when a file/dataset is active) */}
+      {/* Uploaded File Card (Shown when a file is uploaded) */}
       {session && (
         <UploadedFileCard
           session={session}
@@ -114,55 +98,6 @@ export function UploadDataPage({
         />
       )}
 
-      {/* 5 Pre-Configured Business Datasets Selector */}
-      <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="text-xs font-bold text-slate-900">
-            1-Click Multi-Domain Sample Datasets (For Immediate Testing)
-          </div>
-          <span className="text-xs text-slate-500">
-            Click any domain below to test schema-agnostic profiling
-          </span>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-          {SAMPLE_DATASET_META.map((ds) => {
-            const isSelected = session?.fileName === ds.fileName;
-            return (
-              <button
-                key={ds.id}
-                type="button"
-                disabled={isLoading}
-                onClick={() => onLoadSample(ds.id)}
-                className={`text-left p-3.5 rounded-xl border transition-colors flex flex-col justify-between ${
-                  isSelected
-                    ? 'border-slate-900 bg-slate-900 text-white'
-                    : 'border-slate-200 bg-slate-50/70 hover:bg-white text-slate-900'
-                }`}
-              >
-                <div>
-                  <div
-                    className={`text-xs font-medium ${
-                      isSelected ? 'text-slate-300' : 'text-slate-500'
-                    }`}
-                  >
-                    {ds.domain}
-                  </div>
-                  <div className="mt-1 text-xs font-bold">{ds.name}</div>
-                </div>
-                <div
-                  className={`mt-2.5 text-xs font-mono flex items-center gap-1 ${
-                    isSelected ? 'text-emerald-300' : 'text-slate-600'
-                  }`}
-                >
-                  <Database className="w-3 h-3" />
-                  <span>{ds.fileName}</span>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
       {/* Drag & Drop Upload Box */}
       <div
         onDragOver={(e) => {
@@ -171,7 +106,7 @@ export function UploadDataPage({
         }}
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}
-        className={`bg-white border-2 border-dashed rounded-xl p-8 text-center transition-colors ${
+        className={`bg-white border-2 border-dashed rounded-xl p-10 text-center transition-colors ${
           isDragging
             ? 'border-slate-900 bg-slate-50'
             : 'border-slate-300 hover:border-slate-400'
@@ -193,7 +128,7 @@ export function UploadDataPage({
         <div className="text-sm font-bold text-slate-900">
           {session
             ? 'Upload or drop another Excel (.xlsx, .xls) or CSV (.csv) file to replace current analysis'
-            : 'Drag and drop any Excel (.xlsx, .xls) or CSV (.csv) dataset here'}
+            : 'Upload Excel / CSV — Drag and drop your .xlsx, .xls, or .csv file here'}
         </div>
         <p className="mt-1 text-xs text-slate-500 max-w-lg mx-auto">
           Automatically detects the true header row even if title banners exist at the top, selects
@@ -205,13 +140,13 @@ export function UploadDataPage({
             type="button"
             disabled={isLoading}
             onClick={() => fileInputRef.current?.click()}
-            className="px-5 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition-colors"
+            className="px-5 py-2.5 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition-colors"
           >
             {isLoading
               ? 'Parsing & Profiling...'
               : session
               ? 'Select Replacement File'
-              : 'Browse Local Files'}
+              : 'Select Excel / CSV File'}
           </button>
         </div>
       </div>

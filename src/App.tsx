@@ -1,4 +1,3 @@
-import { useEffect, useRef } from 'react';
 import {
   AlertCircle,
   BarChart3,
@@ -27,7 +26,6 @@ export default function App() {
   const {
     activeTab,
     setActiveTab,
-    activeSampleId,
     session,
     fileInputResetKey,
     reconcileState,
@@ -38,7 +36,6 @@ export default function App() {
     notification,
     dismissNotification,
     notify,
-    handleLoadSampleData,
     handleUploadFile,
     handleSelectWorksheet,
     handleDeleteUploadedFile,
@@ -46,22 +43,10 @@ export default function App() {
     handleApplyCleaning,
     handleInlineCellUpdate,
     handleRemoveDuplicateRows,
-    handleLoadSampleReconciliation,
     handleRunCustomReconciliation,
     handleGenerateExcelReport,
     handleClearSession,
   } = useMISState();
-
-  const initializedRef = useRef(false);
-
-  // Automatically load the default Fintech sample dataset on initial launch
-  // so KPI cards, Recharts analytics, validation rules, and reports are immediately demonstrable.
-  useEffect(() => {
-    if (!initializedRef.current) {
-      initializedRef.current = true;
-      handleLoadSampleData('transactions', true);
-    }
-  }, [handleLoadSampleData]);
 
   const mobileTabs: { id: NavTab; label: string; icon: typeof LayoutDashboard }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -82,8 +67,6 @@ export default function App() {
           onSelectTab={setActiveTab}
           session={session}
           reconciliation={reconcileState?.result || null}
-          activeSampleId={activeSampleId}
-          onLoadSample={(datasetId) => handleLoadSampleData(datasetId, true)}
           onStartNewAnalysis={handleStartNewAnalysis}
           isLoading={isLoading}
         />
@@ -94,8 +77,6 @@ export default function App() {
         <TopHeader
           session={session}
           preparedBy={settings.preparedBy}
-          activeSampleId={activeSampleId}
-          onLoadSample={(datasetId) => handleLoadSampleData(datasetId, true)}
           onStartNewAnalysis={handleStartNewAnalysis}
           onExportReport={() => handleGenerateExcelReport()}
           isLoading={isLoading}
@@ -168,13 +149,11 @@ export default function App() {
             <DashboardPage
               session={session}
               settings={settings}
-              activeSampleId={activeSampleId}
               fileInputResetKey={fileInputResetKey}
               isLoading={isLoading}
               onUploadFile={handleUploadFile}
               onDeleteFile={handleDeleteUploadedFile}
               onStartNewAnalysis={handleStartNewAnalysis}
-              onLoadSample={(datasetId) => handleLoadSampleData(datasetId, true)}
               onNavigate={setActiveTab}
             />
           )}
@@ -183,14 +162,12 @@ export default function App() {
             <UploadDataPage
               session={session}
               settings={settings}
-              activeSampleId={activeSampleId}
               fileInputResetKey={fileInputResetKey}
               isLoading={isLoading}
               onUploadFile={handleUploadFile}
               onSelectSheet={handleSelectWorksheet}
               onDeleteFile={handleDeleteUploadedFile}
               onStartNewAnalysis={handleStartNewAnalysis}
-              onLoadSample={(datasetId) => handleLoadSampleData(datasetId, true)}
               onApplyCleaning={handleApplyCleaning}
               onNavigate={setActiveTab}
             />
@@ -200,7 +177,7 @@ export default function App() {
             <ExploreDataPage
               session={session}
               settings={settings}
-              onLoadSample={(datasetId) => handleLoadSampleData(datasetId, true)}
+              onNavigate={setActiveTab}
             />
           )}
 
@@ -211,7 +188,7 @@ export default function App() {
               onApplyCleaning={handleApplyCleaning}
               onRemoveDuplicates={handleRemoveDuplicateRows}
               onInlineCellUpdate={handleInlineCellUpdate}
-              onLoadSample={(datasetId) => handleLoadSampleData(datasetId, true)}
+              onNavigate={setActiveTab}
             />
           )}
 
@@ -221,7 +198,6 @@ export default function App() {
               reconcileState={reconcileState}
               settings={settings}
               isLoading={isLoading}
-              onLoadSampleReconcile={handleLoadSampleReconciliation}
               onRunCustomReconcile={handleRunCustomReconciliation}
               onNotify={notify}
             />
@@ -234,7 +210,7 @@ export default function App() {
               settings={settings}
               isExporting={isExporting}
               onGenerateExcel={handleGenerateExcelReport}
-              onLoadSample={(datasetId) => handleLoadSampleData(datasetId, true)}
+              onNavigate={setActiveTab}
             />
           )}
 

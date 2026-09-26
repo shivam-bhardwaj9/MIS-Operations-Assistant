@@ -10,14 +10,15 @@ import {
   Search,
   Sparkles,
   Trash2,
+  Upload,
   X,
 } from 'lucide-react';
 import { StatusBadge } from '../components/StatusBadge';
+import { NavTab } from '../hooks/useMISState';
 import { exportFilteredRowsToExcel } from '../services/misApi';
 import {
   AppSettings,
   DatasetSession,
-  SampleDatasetId,
   UniversalProcessedRow,
 } from '../types/mis';
 import { formatCurrency, formatNumber } from '../utils/formatters';
@@ -28,7 +29,7 @@ interface DataValidationPageProps {
   onApplyCleaning: (apply?: boolean) => void;
   onRemoveDuplicates: () => void;
   onInlineCellUpdate: (rowIndex: number, updatedCells: Record<string, string>) => void;
-  onLoadSample: (datasetId: SampleDatasetId) => void;
+  onNavigate: (tab: NavTab) => void;
 }
 
 type FilterMode =
@@ -46,7 +47,7 @@ export function DataValidationPage({
   onApplyCleaning,
   onRemoveDuplicates,
   onInlineCellUpdate,
-  onLoadSample,
+  onNavigate,
 }: DataValidationPageProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterMode, setFilterMode] = useState<FilterMode>('all');
@@ -97,18 +98,19 @@ export function DataValidationPage({
     return (
       <div className="bg-white border border-slate-200 rounded-xl p-10 text-center max-w-xl mx-auto my-8 space-y-4">
         <div className="text-base font-bold text-slate-900">
-          No Dataset Available for Validation
+          No Dataset Uploaded for Validation
         </div>
         <p className="text-xs text-slate-600">
-          Load a sample dataset or upload an Excel/CSV file to inspect Data Validity vs Business
+          Upload an Excel (.xlsx, .xls) or CSV (.csv) file to inspect Data Validity vs Business
           Status and resolve exceptions.
         </p>
         <button
           type="button"
-          onClick={() => onLoadSample('transactions')}
-          className="px-4 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition-colors"
+          onClick={() => onNavigate('upload')}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition-colors"
         >
-          Load Sample Dataset
+          <Upload className="w-3.5 h-3.5" />
+          <span>Upload Excel / CSV</span>
         </button>
       </div>
     );

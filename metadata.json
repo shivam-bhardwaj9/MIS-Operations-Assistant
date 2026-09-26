@@ -2,5 +2,7 @@
   "name": "MIS Operations Assistant",
   "description": "Enterprise MIS & Operations automation platform for Excel/CSV data processing, validation, cleaning, reconciliation, and executive Excel report generation.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

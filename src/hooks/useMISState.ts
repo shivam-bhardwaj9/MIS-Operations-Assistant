@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   cleanDatasetApi,
-  deleteSessionApi,
   downloadFormattedExcelReport,
-  loadSampleDatasetApi,
-  loadSampleReconciliationApi,
   runCustomReconciliationApi,
   UniversalReconcileApiResponse,
   uploadDatasetApi,
@@ -14,7 +11,6 @@ import {
   DatasetSession,
   RawRecord,
   ReconcileConfig,
-  SampleDatasetId,
   UniversalProcessedRow,
 } from '../types/mis';
 import { DEFAULT_SETTINGS } from '../utils/formatters';
@@ -38,8 +34,7 @@ export interface NotificationBanner {
 
 export function useMISState() {
   const [sessionId] = useState<string>(() => `mis-session-${Date.now()}`);
-  const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
-  const [activeSampleId, setActiveSampleId] = useState<SampleDatasetId>('transactions');
+  const [activeTab, setActiveTab] = useState<NavTab>('upload');
   const [session, setSession] = useState<DatasetSession | null>(null);
   const [lastUploadedFile, setLastUploadedFile] = useState<File | null>(null);
   const [fileInputResetKey, setFileInputResetKey] = useState<number>(0);
@@ -92,35 +87,9 @@ export function useMISState() {
     [notify]
   );
 
-  const handleLoadSampleData = useCallback(
-    async (datasetId: SampleDatasetId = 'transactions', autoClean = true) => {
-      setIsLoading(true);
-      setActiveSampleId(datasetId);
-      setLastUploadedFile(null);
-      setReconcileState(null);
-      setFileInputResetKey((k) => k + 1);
-      try {
-        const data = await loadSampleDatasetApi(sessionId, datasetId, autoClean);
-        setSession(data);
-        notify(
-          'success',
-          `Loaded "${data.fileName}"`,
-          `${data.validationSummary.totalRecords} rows profiled (${data.validationSummary.validRecords} structurally valid, ${data.validationSummary.invalidRecords} data errors, ${data.validationSummary.businessReviewCount} valid business-review rows).`
-        );
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : 'Could not load sample dataset.';
-        notify('error', 'Load Failed', msg);
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [sessionId, notify]
-  );
-
   const handleUploadFile = useCallback(
     async (file: File, preferredSheetName?: string) => {
       setIsLoading(true);
-      // When uploading or replacing a file (not switching worksheet), clear old analysis first
       if (!preferredSheetName) {
         setSession(null);
         setReconcileState(null);
@@ -136,8 +105,11 @@ export function useMISState() {
           `Detected ${data.uploadedColumns.length} columns across ${data.validationSummary.totalRecords} rows: ${data.validationSummary.validRecords} valid, ${data.validationSummary.invalidRecords} invalid.`
         );
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : 'Failed to upload file.';
-        notify('error', 'Upload Error', msg);
+        const msg =
+          err instanceof Error
+            ? err.message
+            : 'Unable to process the file. Please try again or check the backend connection.';
+        notify('error', 'Unable to Process File', msg);
       } finally {
         setIsLoading(false);
       }
@@ -153,8 +125,7 @@ export function useMISState() {
     [lastUploadedFile, handleUploadFile]
   );
 
-  const handleDeleteUploadedFile = useCallback(async () => {
-    await deleteSessionApi(sessionId);
+  const handleDeleteUploadedFile = useCallback(() => {
     setSession(null);
     setReconcileState(null);
     setLastUploadedFile(null);
@@ -167,10 +138,9 @@ export function useMISState() {
       'Uploaded File Deleted',
       'Uploaded file deleted successfully.'
     );
-  }, [sessionId, notify]);
+  }, [notify]);
 
-  const handleStartNewAnalysis = useCallback(async () => {
-    await deleteSessionApi(sessionId);
+  const handleStartNewAnalysis = useCallback(() => {
     setSession(null);
     setReconcileState(null);
     setLastUploadedFile(null);
@@ -183,10 +153,9 @@ export function useMISState() {
       'Ready for New Analysis',
       'Current analysis cleared. Upload another Excel or CSV file to begin.'
     );
-  }, [sessionId, notify]);
+  }, [notify]);
 
-  const handleClearSession = useCallback(async () => {
-    await deleteSessionApi(sessionId);
+  const handleClearSession = useCallback(() => {
     setSession(null);
     setReconcileState(null);
     setLastUploadedFile(null);
@@ -199,7 +168,7 @@ export function useMISState() {
       'Session Cleared',
       'All in-memory records and reconciliation data have been reset.'
     );
-  }, [sessionId, notify]);
+  }, [notify]);
 
   const handleApplyCleaning = useCallback(
     async (apply = true) => {
@@ -216,7 +185,10 @@ export function useMISState() {
             : 'Showing untouched original cell strings.'
         );
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : 'Failed to toggle cleaning.';
+        const msg =
+          err instanceof Error
+            ? err.message
+            : 'Unable to process the file. Please try again or check the backend connection.';
         notify('error', 'Processing Error', msg);
       } finally {
         setIsLoading(false);
@@ -292,24 +264,6 @@ export function useMISState() {
     );
   }, [session, notify]);
 
-  const handleLoadSampleReconciliation = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const data = await loadSampleReconciliationApi(sessionId);
-      setReconcileState(data);
-      notify(
-        'success',
-        'Sample Reconciliation Completed',
-        `Compared ${data.result.summary.totalFileA} File A records vs ${data.result.summary.totalFileB} File B records (${data.result.summary.matchedCount} matched).`
-      );
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to load sample reconciliation.';
-      notify('error', 'Reconciliation Error', msg);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [sessionId, notify]);
-
   const handleRunCustomReconciliation = useCallback(
     async (params: {
       fileARecords: RawRecord[];
@@ -338,7 +292,10 @@ export function useMISState() {
           `Matched ${result.summary.matchedCount} records (${result.summary.reconciliationRate}% match rate).`
         );
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : 'Reconciliation failed.';
+        const msg =
+          err instanceof Error
+            ? err.message
+            : 'Unable to reconcile files. Please try again or check the backend connection.';
         notify('error', 'Reconciliation Error', msg);
       } finally {
         setIsLoading(false);
@@ -355,7 +312,7 @@ export function useMISState() {
       downloadFileName?: string;
     }) => {
       if (!session) {
-        notify('error', 'No Active Dataset', 'Please load a sample dataset or upload a file first.');
+        notify('error', 'No Active Dataset', 'Please upload an Excel or CSV file first.');
         return;
       }
       setIsExporting(true);
@@ -375,7 +332,10 @@ export function useMISState() {
           'Exported Executive Summary, Dataset Profile, Raw Data, Clean Data, Data Quality, Dynamic Analysis, and Exceptions sheets.'
         );
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : 'Failed to generate Excel workbook.';
+        const msg =
+          err instanceof Error
+            ? err.message
+            : 'Unable to generate Excel workbook. Please try again.';
         notify('error', 'Export Error', msg);
       } finally {
         setIsExporting(false);
@@ -388,7 +348,6 @@ export function useMISState() {
     sessionId,
     activeTab,
     setActiveTab,
-    activeSampleId,
     session,
     lastUploadedFile,
     fileInputResetKey,
@@ -400,7 +359,6 @@ export function useMISState() {
     notification,
     dismissNotification: () => setNotification(null),
     notify,
-    handleLoadSampleData,
     handleUploadFile,
     handleSelectWorksheet,
     handleDeleteUploadedFile,
@@ -408,7 +366,6 @@ export function useMISState() {
     handleApplyCleaning,
     handleInlineCellUpdate,
     handleRemoveDuplicateRows,
-    handleLoadSampleReconciliation,
     handleRunCustomReconciliation,
     handleGenerateExcelReport,
     handleClearSession,

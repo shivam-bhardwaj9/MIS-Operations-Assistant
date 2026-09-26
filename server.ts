@@ -10,13 +10,10 @@ import {
   RawRecord,
   ReconcileConfig,
   ReconciliationResult,
-  SampleDatasetId,
 } from './src/types/mis';
 import { generateFormattedMISWorkbook } from './src/utils/excelGenerator';
 import { DEFAULT_SETTINGS } from './src/utils/formatters';
 import {
-  generateUniversalSampleReconciliation,
-  getSampleDatasetById,
   processUniversalDataset,
   runDynamicGroupByAnalysis,
   runUniversalReconciliation,
@@ -46,8 +43,6 @@ function safeRemoveTempFile(tempFilePath: string | null): void {
   if (!tempFilePath) return;
   try {
     const resolved = path.resolve(tempFilePath);
-    // Never delete repository sample_data files
-    if (resolved.includes('sample_data')) return;
     if (fs.existsSync(resolved)) {
       fs.unlinkSync(resolved);
     }
@@ -63,40 +58,9 @@ async function startServer() {
   app.get('/api/health', (_req, res) => {
     res.json({
       status: 'healthy',
-      service: 'Universal MIS Operations & Reporting Platform API',
-      timestamp: new Date().toISOString(),
+      service: 'MIS Operations Assistant FastAPI Backend',
       activeSessions: sessions.size,
     });
-  });
-
-  // Load any of the 5 multi-domain sample datasets
-  app.post('/api/sample', (req, res) => {
-    try {
-      const sessionId = (req.body?.sessionId as string) || `session-${Date.now()}`;
-      const datasetId = (req.body?.datasetId as SampleDatasetId) || 'transactions';
-      const applyCleaning =
-        req.body?.applyCleaning !== undefined ? Boolean(req.body.applyCleaning) : true;
-
-      // Clear any previous analysis / reconciliation for this session before loading new dataset
-      sessions.delete(sessionId);
-      reconciliations.delete(sessionId);
-
-      const { fileName, rawRecords } = getSampleDatasetById(datasetId);
-      const sessionData = processUniversalDataset(rawRecords, {
-        applyCleaning,
-        fileName,
-        fileSize: 24576,
-        sessionId,
-        sheetNames: ['Data'],
-        activeSheetName: 'Data',
-      });
-
-      sessions.set(sessionId, sessionData);
-      res.json(sessionData);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to load sample dataset.';
-      res.status(500).json({ error: message });
-    }
   });
 
   // Universal Excel/CSV Upload with Smart Sheet & Header Detection & Temporary File Cleanup
@@ -104,7 +68,10 @@ async function startServer() {
     let tempUploadPath: string | null = null;
     try {
       if (!req.file) {
-        res.status(400).json({ error: 'No file provided in upload request.' });
+        res.status(400).json({
+          detail: 'No file provided in upload request.',
+          error: 'No file provided in upload request.',
+        });
         return;
       }
 
@@ -112,7 +79,6 @@ async function startServer() {
       const sessionId = (req.body?.sessionId as string) || `session-${Date.now()}`;
       const preferredSheet = req.body?.sheetName as string | undefined;
 
-      // Write uploaded source file to a temporary path, process it, and guarantee deletion in finally
       tempUploadPath = path.join(
         os.tmpdir(),
         `mis_upload_${Date.now()}_${Math.random().toString(36).slice(2)}${ext}`
@@ -122,7 +88,6 @@ async function startServer() {
 
       const parsed = parseWorkbookFromData(fileBufferFromDisk, preferredSheet);
 
-      // Clear previous session & reconciliation state when replacing file
       sessions.delete(sessionId);
       if (!preferredSheet) {
         reconciliations.delete(sessionId);
@@ -141,36 +106,51 @@ async function startServer() {
       res.json(sessionData);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to parse uploaded file.';
-      res.status(400).json({ error: message });
+      res.status(400).json({ detail: message, error: message });
     } finally {
       safeRemoveTempFile(tempUploadPath);
     }
   });
 
-  // Delete / Clear Session & Uploaded File Analysis State
-  app.delete('/api/session/:sessionId', (req, res) => {
-    const { sessionId } = req.params;
-    sessions.delete(sessionId);
-    reconciliations.delete(sessionId);
-    res.json({
-      status: 'cleared',
-      sessionId,
-      message: 'Uploaded file deleted and analysis state cleared.',
-    });
+  // Validate Dataset (compatible with FastAPI ValidateRequest)
+  app.post('/api/validate', (req, res) => {
+    try {
+      const { sessionId, rawRecords, fileName, fileSize } = req.body as {
+        sessionId: string;
+        rawRecords?: RawRecord[];
+        fileName?: string;
+        fileSize?: number;
+      };
+
+      const existing = sessions.get(sessionId);
+      const sourceRaw = rawRecords || existing?.rawRecords;
+
+      if (!sourceRaw || sourceRaw.length === 0) {
+        res.status(400).json({
+          detail: 'No dataset found in session.',
+          error: 'No dataset found in session.',
+        });
+        return;
+      }
+
+      const updated = processUniversalDataset(sourceRaw, {
+        applyCleaning: false,
+        fileName: fileName || existing?.fileName || 'Dataset.xlsx',
+        fileSize: fileSize ?? existing?.fileSize ?? 0,
+        sessionId,
+        sheetNames: existing?.sheetNames || ['Sheet1'],
+        activeSheetName: existing?.activeSheetName || 'Sheet1',
+      });
+
+      sessions.set(sessionId, updated);
+      res.json(updated);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Validation failed.';
+      res.status(400).json({ detail: message, error: message });
+    }
   });
 
-  app.post('/api/session/clear', (req, res) => {
-    const sessionId = (req.body?.sessionId as string) || 'default';
-    sessions.delete(sessionId);
-    reconciliations.delete(sessionId);
-    res.json({
-      status: 'cleared',
-      sessionId,
-      message: 'Uploaded file deleted and analysis state cleared.',
-    });
-  });
-
-  // Re-validate / Clean Dataset
+  // Clean Dataset (compatible with FastAPI CleanRequest)
   app.post('/api/clean', (req, res) => {
     try {
       const { sessionId, rawRecords, fileName, fileSize, applyCleaning = true } = req.body as {
@@ -185,7 +165,10 @@ async function startServer() {
       const sourceRaw = rawRecords || existing?.rawRecords;
 
       if (!sourceRaw || sourceRaw.length === 0) {
-        res.status(400).json({ error: 'No dataset found in session.' });
+        res.status(400).json({
+          detail: 'No dataset found in session.',
+          error: 'No dataset found in session.',
+        });
         return;
       }
 
@@ -202,7 +185,7 @@ async function startServer() {
       res.json(updated);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Cleaning / validation failed.';
-      res.status(400).json({ error: message });
+      res.status(400).json({ detail: message, error: message });
     }
   });
 
@@ -218,7 +201,10 @@ async function startServer() {
 
       const existing = sessions.get(sessionId);
       if (!existing) {
-        res.status(400).json({ error: 'Active session not found.' });
+        res.status(400).json({
+          detail: 'Active session not found.',
+          error: 'Active session not found.',
+        });
         return;
       }
 
@@ -231,55 +217,45 @@ async function startServer() {
       res.json(analysis);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Analysis failed.';
-      res.status(400).json({ error: message });
+      res.status(400).json({ detail: message, error: message });
     }
   });
 
-  // Universal Reconciliation endpoint
+  // Universal Reconciliation endpoint (requires real File A and File B records)
   app.post('/api/reconcile', (req, res) => {
     try {
-      if (req.body?.useSampleReconciliation) {
-        const sample = generateUniversalSampleReconciliation();
-        const result = runUniversalReconciliation(
-          sample.fileARecords,
-          sample.fileBRecords,
-          sample.config,
-          sample.fileAName,
-          sample.fileBName
-        );
-        const sessionId = (req.body?.sessionId as string) || 'default';
-        reconciliations.set(sessionId, result);
-        res.json({
-          result,
-          fileAColumns: Object.keys(sample.fileARecords[0] || {}),
-          fileBColumns: Object.keys(sample.fileBRecords[0] || {}),
-          config: sample.config,
-          fileARecords: sample.fileARecords,
-          fileBRecords: sample.fileBRecords,
+      const sessionId = (req.body?.sessionId as string) || 'default';
+      const fileARecords: RawRecord[] =
+        req.body?.fileARecords || req.body?.internalRecords || [];
+      const fileBRecords: RawRecord[] =
+        req.body?.fileBRecords || req.body?.externalRecords || [];
+
+      if (!fileARecords.length || !fileBRecords.length) {
+        res.status(400).json({
+          detail: 'Both File A and File B records are required.',
+          error: 'Both File A and File B records are required.',
         });
         return;
       }
 
-      const {
-        sessionId = 'default',
-        fileARecords,
-        fileBRecords,
-        config,
-        fileAName = 'File_A.xlsx',
-        fileBName = 'File_B.xlsx',
-      } = req.body as {
-        sessionId: string;
-        fileARecords: RawRecord[];
-        fileBRecords: RawRecord[];
-        config: ReconcileConfig;
-        fileAName: string;
-        fileBName: string;
+      const intMap = req.body?.internalMapping || {};
+      const extMap = req.body?.externalMapping || {};
+
+      const config: ReconcileConfig = req.body?.config || {
+        keyColumnA: intMap.transactionId || '',
+        keyColumnB: extMap.transactionId || '',
+        valueColumnA: intMap.amount || '',
+        valueColumnB: extMap.amount || '',
+        dateColumnA: intMap.date || '',
+        dateColumnB: extMap.date || '',
+        labelColumnA: intMap.partyName || '',
+        labelColumnB: extMap.partyName || '',
       };
 
-      if (!fileARecords?.length || !fileBRecords?.length) {
-        res.status(400).json({ error: 'Both File A and File B datasets are required.' });
-        return;
-      }
+      const fileAName =
+        req.body?.fileAName || req.body?.internalFileName || 'Internal_Transactions.xlsx';
+      const fileBName =
+        req.body?.fileBName || req.body?.externalFileName || 'Bank_Statement.xlsx';
 
       const result = runUniversalReconciliation(
         fileARecords,
@@ -300,7 +276,7 @@ async function startServer() {
       });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Reconciliation failed.';
-      res.status(400).json({ error: message });
+      res.status(400).json({ detail: message, error: message });
     }
   });
 
@@ -322,7 +298,10 @@ async function startServer() {
         bodySession || sessions.get(sessionId);
 
       if (!activeSession) {
-        res.status(400).json({ error: 'No active dataset found to export.' });
+        res.status(400).json({
+          detail: 'No active dataset found to export.',
+          error: 'No active dataset found to export.',
+        });
         return;
       }
 
@@ -356,7 +335,7 @@ async function startServer() {
       res.send(reportBytes);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to generate Excel report.';
-      res.status(500).json({ error: message });
+      res.status(500).json({ detail: message, error: message });
     } finally {
       safeRemoveTempFile(tempReportPath);
     }

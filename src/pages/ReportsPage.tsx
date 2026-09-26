@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react';
-import { CheckCircle2, Download, FileSpreadsheet } from 'lucide-react';
+import { CheckCircle2, Download, FileSpreadsheet, Upload } from 'lucide-react';
 import { StatusBadge } from '../components/StatusBadge';
+import { NavTab } from '../hooks/useMISState';
 import {
   AppSettings,
   DatasetSession,
   ReconciliationResult,
   ReportPeriodType,
-  SampleDatasetId,
   UniversalProcessedRow,
 } from '../types/mis';
 import { formatCurrency, formatNumber } from '../utils/formatters';
@@ -22,7 +22,7 @@ interface ReportsPageProps {
     periodLabel?: string;
     downloadFileName?: string;
   }) => void;
-  onLoadSample: (datasetId: SampleDatasetId) => void;
+  onNavigate: (tab: NavTab) => void;
 }
 
 export function ReportsPage({
@@ -31,7 +31,7 @@ export function ReportsPage({
   settings,
   isExporting,
   onGenerateExcel,
-  onLoadSample,
+  onNavigate,
 }: ReportsPageProps) {
   const [periodType, setPeriodType] = useState<ReportPeriodType>('all');
   const [selectedDailyDate, setSelectedDailyDate] = useState<string>('');
@@ -88,18 +88,18 @@ export function ReportsPage({
     return (
       <div className="bg-white border border-slate-200 rounded-xl p-10 text-center max-w-xl mx-auto my-8 space-y-4">
         <div className="text-base font-bold text-slate-900">
-          No Dataset Loaded for Report Generation
+          No Dataset Uploaded for Report Generation
         </div>
         <p className="text-xs text-slate-600">
-          Load a sample dataset or upload an Excel/CSV file to generate a universal multi-sheet MIS
-          report.
+          Upload an Excel (.xlsx, .xls) or CSV (.csv) file to generate a multi-sheet MIS report.
         </p>
         <button
           type="button"
-          onClick={() => onLoadSample('transactions')}
-          className="px-4 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition-colors"
+          onClick={() => onNavigate('upload')}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition-colors"
         >
-          Load Sample Dataset
+          <Upload className="w-3.5 h-3.5" />
+          <span>Upload Excel / CSV</span>
         </button>
       </div>
     );

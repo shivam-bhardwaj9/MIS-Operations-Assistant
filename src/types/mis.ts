@@ -207,13 +207,6 @@ export interface DailyMetricPoint {
   failedCount: number;
 }
 
-export type SampleDatasetId =
-  | 'transactions'
-  | 'employees'
-  | 'sales'
-  | 'inventory'
-  | 'tickets';
-
 export interface DatasetSession {
   sessionId: string;
   fileName: string;
